@@ -1,0 +1,22 @@
+{
+  "name": "shindig",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/lirantal/shindig#readme",
+  "bugs": {
+    "url": "https://github.com/lirantal/shindig/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lirantal/shindig.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "cd frontend && pnpm dev & cd ../backend && pnpm dev",
+    "start:backend": "cd backend && pnpm dev",
+    "start:frontend": "cd frontend && pnpm dev"
+  }
+}

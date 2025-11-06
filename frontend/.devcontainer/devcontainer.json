@@ -1,0 +1,28 @@
+{
+    "name": "Nuxt app starter",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    "forwardPorts": [
+      3005
+    ],
+    "portsAttributes": {
+      "3005": {
+        "label": "Nuxt Dev Server",
+        "onAutoForward": "notify"
+      },
+      "3001": {
+        "label": "Nuxt Preview Server",
+        "onAutoForward": "silent"
+      }
+    },
+    "postCreateCommand": "git config --global commit.gpgsign false; git config --local core.pager \"less -R\"; pnpm install --force",
+    "postStartCommand": "pnpm run dev",
+    "remoteUser": "node",
+    "workspaceFolder": "/workspaces/nuxt-app-starter",
+    "containerEnv": {
+      "NODE_ENV": "development"
+    },
+    "remoteEnv": {
+      "NODE_ENV": "development"
+    },
+    "shutdownAction": "stopContainer"
+  }

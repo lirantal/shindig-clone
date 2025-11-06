@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hono-starter-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-11",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "dev": {
+    "ip": "0.0.0.0", // Required to enable accessing the dev server from outside the devcontainer.
+  },
+  // "vars": {
+  //   "MY_VAR": "my-variable"
+  // },
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "MY_KV_NAMESPACE",
+  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  //   }
+  // ],
+  "r2_buckets": [
+    {
+      "binding": "GALLERY",
+      "bucket_name": "gallery"
+    }
+  ],
+  // "d1_databases": [
+  //   {
+  //     "binding": "MY_DB",
+  //     "database_name": "my-database",
+  //     "database_id": ""
+  //   }
+  // ],
+  // "ai": {
+  //   "binding": "AI"
+  // },
+  // "observability": {
+  //   "enabled": true,
+  //   "head_sampling_rate": 1
+  // }
+}
