@@ -1,6 +1,8 @@
+// postCreate: git config --global commit.gpgsign false; git config --local core.pager \"less -R\"; npm install -g pnpm@latest; npm install -g pm2 && pnpm install --force
+// postStart: npx pm2-runtime start ecosystem.config.js --no-auto-exit
 {
     "name": "Project monorepo devcontainer",
-    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-bookworm",
     "mounts": [
         "source=${localEnv:HOME}/Documents/zscaler-root-ca.pem,target=/home/node/zscaler-root-ca.pem,type=bind,consistency=cached"
     ],
@@ -23,8 +25,8 @@
             "onAutoForward": "silent"
         }
     },
-    "postCreateCommand": "git config --global commit.gpgsign false; git config --local core.pager \"less -R\";",
-    "postStartCommand": "echo hello",
+    "postCreateCommand": "echo hello1",
+    "postStartCommand": "echo hello2",
     "remoteUser": "node",
     "workspaceFolder": "/workspaces/shindig",
     "containerEnv": {
