@@ -4,7 +4,9 @@
     "forwardPorts": [
         8787,
         3005,
-        3001
+        3001,
+        80,
+        443
     ],
     "portsAttributes": {
         "8787": {
@@ -18,14 +20,22 @@
         "3001": {
             "label": "Nuxt Preview Server",
             "onAutoForward": "silent"
+        },
+        "80": {
+            "label": "Caddy HTTP",
+            "onAutoForward": "notify"
+        },
+        "443": {
+            "label": "Caddy HTTPS",
+            "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "git config --global commit.gpgsign false; git config --local core.pager \"less -R\"; pnpm install --force",
-    // "postStartCommand": "echo hello2",
+    "postCreateCommand": "git config --global commit.gpgsign false; git config --local core.pager \"less -R\"; pnpm install; sudo apt-get update && sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list && sudo apt-get update && sudo apt-get install -y caddy && sudo setcap 'cap_net_bind_service=+ep' /usr/bin/caddy && echo '127.0.0.1 myapp.com' | sudo tee -a /etc/hosts",
+    "postStartCommand": "cd /workspaces/shindig/infra/http-server && caddy run --config Caddyfile &",
     "remoteUser": "node",
     "workspaceFolder": "/workspaces/shindig",
     "containerEnv": {
-        "NODE_ENV": "development",
+        "NODE_ENV": "development"
     },
     "remoteEnv": {
         "NODE_ENV": "development"
