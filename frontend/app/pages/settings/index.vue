@@ -16,11 +16,84 @@ const profileSchema = z.object({
 type ProfileSchema = z.output<typeof profileSchema>
 
 const profile = reactive<Partial<ProfileSchema>>({
-  name: 'Benjamin Canac',
+  name: '',
   avatar: undefined,
   bio: undefined
 })
 const toast = useToast()
+
+// Type for backend profile response
+type ProfileResponse = {
+  id: string
+  name: string
+  email: string
+  image: string | null
+  emailVerified: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Helper function to construct avatar URL from image key
+async function getAvatarUrl(imageKey: string | null | undefined): Promise<string | undefined> {
+  if (!imageKey) {
+    return undefined
+  }
+
+  // If CDN URL is configured, construct the URL directly
+  if (config.public.r2CdnUrl) {
+    return `${config.public.r2CdnUrl}/gallery/${imageKey}`
+  }
+
+  // Otherwise, fetch signed URL from backend
+  try {
+    type ImageResponse = {
+      hasImage: boolean
+      downloadUrl?: string
+    }
+    const response = await $fetch<ImageResponse>(
+      `${config.public.apiBaseUrl}/api/user/profile/image`,
+      {
+        credentials: 'include'
+      }
+    )
+    return response.hasImage ? response.downloadUrl : undefined
+  } catch (err) {
+    console.error('Failed to get avatar URL:', err)
+    return undefined
+  }
+}
+
+// Load profile data on mount
+const { error: loadError } = await useFetch<ProfileResponse>(
+  `${config.public.apiBaseUrl}/api/user/profile`,
+  {
+    credentials: 'include',
+    lazy: true,
+    onResponse: async ({ response }) => {
+      if (response._data) {
+        const userData = response._data
+        // Map backend response to frontend form state
+        profile.name = userData.name || ''
+
+        // Construct avatar URL
+        profile.avatar = await getAvatarUrl(userData.image)
+
+        // Bio is not in backend schema, so leave undefined
+        profile.bio = undefined
+      }
+    }
+  }
+)
+
+// Show error toast if loading fails
+if (loadError.value) {
+  toast.add({
+    title: 'Error',
+    description: 'Failed to load profile data. Please refresh the page.',
+    icon: 'i-lucide-alert-circle',
+    color: 'error'
+  })
+}
 
 async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
   try {
@@ -34,7 +107,7 @@ async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
       })
 
       await uploadFile(selectedFile.value)
-      
+
       // Update local profile with CDN URL for preview
       if (config.public.r2CdnUrl) {
         // The backend manages the stable key, so we can construct a preview URL
@@ -53,11 +126,33 @@ async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
     }
 
     // Make API call to update user profile
-    await $fetch(`${config.public.apiBaseUrl}/api/user/profile`, {
-      method: 'POST',
-      body: profileData,
-      credentials: 'include'
-    })
+    type UpdateProfileResponse = {
+      success: boolean
+      user: {
+        id: string
+        name: string
+        email: string
+        image: string | null
+        emailVerified: boolean
+        createdAt: string
+        updatedAt: string
+      }
+    }
+    const response = await $fetch<UpdateProfileResponse>(
+      `${config.public.apiBaseUrl}/api/user/profile`,
+      {
+        method: 'POST',
+        body: profileData,
+        credentials: 'include'
+      }
+    )
+
+    // Update local state with response
+    if (response.user) {
+      profile.name = response.user.name
+      // Update avatar URL if image exists
+      profile.avatar = await getAvatarUrl(response.user.image)
+    }
 
     toast.add({
       title: 'Success',
