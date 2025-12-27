@@ -18,6 +18,16 @@ module.exports = {
       interpreter: "none",
       autorestart: false,
       exec_mode: 'fork',
+    },
+    {
+      name: "caddy",
+      cwd: "./infra/http-server",  // Path to Caddy configuration
+      script: "caddy",
+      args: "run --config Caddyfile",   // Runs Caddy with the Caddyfile
+      interpreter: "none",
+      autorestart: false,
+      exec_mode: 'fork',
     }
   ]
 };
+
