@@ -11,16 +11,19 @@
     "sync-env": "./scripts/sync-env.sh",
     "setup-r2": "./scripts/setup-r2.sh",
     "update-cors": "./scripts/update-cors.sh",
-    "update-cors-set-origins": "./scripts/update-cors.sh \"https://myapp.com\" \"https://www.myapp.com\""
+    "update-cors-set-origins": "./scripts/update-cors.sh \"https://myapp.com\" \"https://www.myapp.com\"",
+    "reset-password": "pnpm dlx tsx scripts/reset-password.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "aws4fetch": "^1.0.20",
     "better-auth": "^1.3.27",
+    "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.44.6",
     "hono": "^4.9.10"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.7.1",
     "drizzle-kit": "^0.31.5",
     "wrangler": "^4.4.0"
