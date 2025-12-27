@@ -2,13 +2,17 @@
   "name": "my-monorepo-root",
   "private": true,
   "scripts": {
-    "dev": "pm2 start all",
-    "dev:frontend": "pm2 start frontend",
-    "dev:backend": "pm2 start backend",
+    "start": "pm2 start",
+    "dev": "pm2 start",
+    "dev:frontend": "pm2 start --only frontend",
+    "dev:backend": "pm2 start --only backend",
     "stop": "pm2 stop all",
     "stop:frontend": "pm2 stop frontend",
     "stop:backend": "pm2 stop backend",
     "status": "pm2 list",
     "logs": "pm2 logs"
+  },
+  "devDependencies": {
+    "pm2": "^6.0.14"
   }
 }
