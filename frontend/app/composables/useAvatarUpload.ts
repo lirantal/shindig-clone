@@ -3,7 +3,7 @@ import type { UploadRequest, UploadResponse, UploadedFile, UploadError } from '~
 export const useAvatarUpload = () => {
   const config = useRuntimeConfig()
   const apiUrl = config.public.apiBaseUrl
-  
+
   const uploading = ref(false)
   const uploadProgress = ref(0)
   const error = ref<UploadError | null>(null)
@@ -38,7 +38,7 @@ export const useAvatarUpload = () => {
         body: uploadRequest,
         credentials: 'include'
       })
-      
+
       return response
     } catch (err: any) {
       throw new Error(`Failed to get pre-signed URL: ${err.message || 'Unknown error'}`)
@@ -121,7 +121,7 @@ export const useAvatarUpload = () => {
   // Upload multiple files
   const uploadFiles = async (files: File[]): Promise<UploadedFile[]> => {
     const results: UploadedFile[] = []
-    
+
     for (const file of files) {
       try {
         const result = await uploadFile(file)
@@ -131,7 +131,7 @@ export const useAvatarUpload = () => {
         // Continue with other files
       }
     }
-    
+
     return results
   }
 
@@ -146,7 +146,7 @@ export const useAvatarUpload = () => {
     uploading: readonly(uploading),
     uploadProgress: readonly(uploadProgress),
     error: readonly(error),
-    
+
     // Methods
     uploadFile,
     uploadFiles,
@@ -154,4 +154,3 @@ export const useAvatarUpload = () => {
     clearError
   }
 }
-

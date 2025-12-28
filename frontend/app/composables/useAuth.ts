@@ -2,7 +2,7 @@ import type { User, Session } from 'better-auth/types'
 
 export const useAuth = () => {
   const { $authClient } = useNuxtApp()
-  
+
   // Reactive state
   const session = ref<Session | null>(null)
   const user = ref<User | null>(null)
@@ -14,11 +14,11 @@ export const useAuth = () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const result = await $authClient.getSession()
       session.value = result.data?.session || null
       user.value = result.data?.user || null
-      
+
       return result.data
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to get session'
@@ -34,18 +34,18 @@ export const useAuth = () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const result = await $authClient.signIn.email({
         email,
         password
       })
-      
+
       if (result.data) {
         session.value = result.data.session
         user.value = result.data.user
         return result.data
       }
-      
+
       throw new Error('Sign in failed')
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Sign in failed'
@@ -61,19 +61,19 @@ export const useAuth = () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const result = await $authClient.signUp.email({
         email,
         password,
         name
       })
-      
+
       if (result.data) {
         session.value = result.data.session
         user.value = result.data.user
         return result.data
       }
-      
+
       throw new Error('Sign up failed')
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Sign up failed'
@@ -89,12 +89,12 @@ export const useAuth = () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       await $authClient.signOut()
-      
+
       session.value = null
       user.value = null
-      
+
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Sign out failed'
@@ -120,7 +120,7 @@ export const useAuth = () => {
     isLoading: readonly(isLoading),
     error: readonly(error),
     isAuthenticated,
-    
+
     // Methods
     getSession,
     signIn,
