@@ -57,8 +57,8 @@ export const useAvatarUpload = () => {
       }
 
       // Debug: Log the headers being sent
-      console.log('Upload headers:', headers)
-      console.log('Upload response data:', uploadResponse)
+      // console.log('Upload headers:', headers)
+      // console.log('Upload response data:', uploadResponse)
 
       const response = await fetch(presignedUrl, {
         method: 'PUT',
