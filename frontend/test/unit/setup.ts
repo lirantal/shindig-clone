@@ -9,4 +9,3 @@ global.console = {
   error: vi.fn(),
   warn: vi.fn()
 }
-

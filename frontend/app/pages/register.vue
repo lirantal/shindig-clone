@@ -13,7 +13,7 @@ useSeoMeta({
 })
 
 const toast = useToast()
-const { signUp, isLoading, error } = useAuth()
+const { signUp, error } = useAuth()
 
 const fields: AuthFormField[] = [{
   name: 'firstName',
@@ -74,8 +74,8 @@ const schema = z.object({
   confirmPassword: z.string().min(8, 'Please confirm your password'),
   terms: z.boolean().refine(val => val === true, 'You must agree to the terms')
 }).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
+  message: 'Passwords don\'t match',
+  path: ['confirmPassword']
 })
 
 type Schema = z.output<typeof schema>
@@ -84,16 +84,16 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   try {
     const fullName = `${payload.data.firstName} ${payload.data.lastName}`
     await signUp(payload.data.email, payload.data.password, fullName)
-    
+
     toast.add({
       title: 'Account created successfully',
       description: 'Welcome! Please check your email to verify your account.',
       color: 'primary'
     })
-    
+
     // Redirect to dashboard
     await navigateTo('/')
-  } catch (err) {
+  } catch {
     toast.add({
       title: 'Registration failed',
       description: error.value || 'Please check your information and try again',

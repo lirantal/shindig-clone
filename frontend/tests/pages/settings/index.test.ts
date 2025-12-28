@@ -42,8 +42,8 @@ vi.mock('#app', () => ({
 }))
 
 vi.mock('#imports', () => ({
-  useFetch: (...args: any[]) => mockUseFetch(...args),
-  $fetch: (...args: any[]) => mockFetch(...args)
+  useFetch: (...args: unknown[]) => mockUseFetch(...args),
+  $fetch: (...args: unknown[]) => mockFetch(...args)
 }))
 
 vi.mock('~/composables/useAvatarUpload', () => ({
@@ -135,7 +135,7 @@ describe('Settings Page - Profile Management', () => {
 
     it('should show error toast when profile loading fails', () => {
       const toast = mockUseToast()
-      const error = new Error('Failed to load profile')
+      const _error = new Error('Failed to load profile')
 
       toast.add({
         title: 'Error',

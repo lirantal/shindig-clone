@@ -26,6 +26,5 @@ export interface UploadedFile {
 export interface UploadError {
   message: string
   code?: string
-  details?: any
+  details?: unknown
 }
-

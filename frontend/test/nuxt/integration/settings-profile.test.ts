@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
 
 // This is an integration test that tests the full flow of profile management
-// It uses mountSuspended which properly handles Nuxt's async setup
 
 describe('Settings Profile - Integration Tests', () => {
   beforeEach(() => {
@@ -50,7 +48,7 @@ describe('Settings Profile - Integration Tests', () => {
     })
 
     it('should handle avatar upload and profile update together', async () => {
-      const mockFile = new File(['test'], 'avatar.jpg', { type: 'image/jpeg' })
+      const _mockFile = new File(['test'], 'avatar.jpg', { type: 'image/jpeg' })
       const mockPresignedResponse = {
         presignedUrl: 'https://r2.example.com/upload',
         key: 'new-avatar-key',
@@ -107,7 +105,7 @@ describe('Settings Profile - Integration Tests', () => {
     })
 
     it('should handle upload failures gracefully', async () => {
-      const mockFile = new File(['test'], 'avatar.jpg', { type: 'image/jpeg' })
+      const _mockFile = new File(['test'], 'avatar.jpg', { type: 'image/jpeg' })
       const mockFetch = vi.fn()
       mockFetch.mockRejectedValueOnce(new Error('Upload failed'))
 
@@ -145,4 +143,3 @@ describe('Settings Profile - Integration Tests', () => {
     })
   })
 })
-

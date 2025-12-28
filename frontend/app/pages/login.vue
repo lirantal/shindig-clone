@@ -13,7 +13,7 @@ useSeoMeta({
 })
 
 const toast = useToast()
-const { signIn, isLoading, error } = useAuth()
+const { signIn, error } = useAuth()
 
 const fields: AuthFormField[] = [{
   name: 'email',
@@ -57,16 +57,16 @@ type Schema = z.output<typeof schema>
 async function onSubmit(payload: FormSubmitEvent<Schema>) {
   try {
     await signIn(payload.data.email, payload.data.password)
-    
+
     toast.add({
       title: 'Login successful',
       description: 'Welcome back!',
       color: 'primary'
     })
-    
+
     // Redirect to dashboard
     await navigateTo('/')
-  } catch (err) {
+  } catch {
     toast.add({
       title: 'Login failed',
       description: error.value || 'Please check your credentials and try again',
@@ -77,23 +77,23 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-      <UAuthForm
-        :schema="schema"
-        :fields="fields"
-        :providers="providers"
-        title="Welcome back!"
-        description="Enter your credentials to access your account."
-        icon="i-lucide-lock"
-        @submit="onSubmit"
-      >
-        <template #description>
-          Don't have an account? <ULink to="/register" class="text-primary font-medium">Sign up</ULink>.
-        </template>
-        <template #password-hint>
-          <ULink to="/forgot-password" class="text-primary font-medium" tabindex="-1">Forgot password?</ULink>
-        </template>
-        <template #footer>
-          By signing in, you agree to our <ULink to="/terms" class="text-primary font-medium">Terms of Service</ULink>.
-        </template>
-      </UAuthForm>
+  <UAuthForm
+    :schema="schema"
+    :fields="fields"
+    :providers="providers"
+    title="Welcome back!"
+    description="Enter your credentials to access your account."
+    icon="i-lucide-lock"
+    @submit="onSubmit"
+  >
+    <template #description>
+      Don't have an account? <ULink to="/register" class="text-primary font-medium">Sign up</ULink>.
+    </template>
+    <template #password-hint>
+      <ULink to="/forgot-password" class="text-primary font-medium" tabindex="-1">Forgot password?</ULink>
+    </template>
+    <template #footer>
+      By signing in, you agree to our <ULink to="/terms" class="text-primary font-medium">Terms of Service</ULink>.
+    </template>
+  </UAuthForm>
 </template>

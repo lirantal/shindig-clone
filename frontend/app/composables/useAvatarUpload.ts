@@ -40,8 +40,9 @@ export const useAvatarUpload = () => {
       })
 
       return response
-    } catch (err: any) {
-      throw new Error(`Failed to get pre-signed URL: ${err.message || 'Unknown error'}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      throw new Error(`Failed to get pre-signed URL: ${message}`)
     }
   }
 
@@ -53,7 +54,7 @@ export const useAvatarUpload = () => {
         // DO NOT include Content-Length - browser calculates it automatically
         'x-amz-meta-original-filename': uploadResponse.originalFilename,
         'x-amz-meta-uploaded-by': uploadResponse.uploadedBy,
-        'x-amz-meta-uploaded-at': uploadResponse.uploadedAt,
+        'x-amz-meta-uploaded-at': uploadResponse.uploadedAt
       }
 
       // Debug: Log the headers being sent
@@ -63,14 +64,15 @@ export const useAvatarUpload = () => {
       const response = await fetch(presignedUrl, {
         method: 'PUT',
         headers,
-        body: file,
+        body: file
       })
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
       }
-    } catch (err: any) {
-      throw new Error(`Upload failed: ${err.message}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      throw new Error(`Upload failed: ${message}`)
     }
   }
 
@@ -106,9 +108,10 @@ export const useAvatarUpload = () => {
       uploadProgress.value = 100
 
       return uploadedFile
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
       error.value = {
-        message: err.message,
+        message,
         code: 'UPLOAD_FAILED',
         details: err
       }

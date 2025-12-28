@@ -23,7 +23,7 @@ const currentUser = computed(() => {
       }
     }
   }
-  
+
   // Fallback for when user is not loaded yet
   return {
     name: 'Loading...',
