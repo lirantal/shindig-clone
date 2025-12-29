@@ -787,6 +787,156 @@ vi.mock('#imports', () => ({
 7. **Clean up after tests**: Unmount components in `afterEach` if needed
 8. **Test composable integration**: Verify component calls composable methods correctly
 
+## TypeScript Best Practices in Tests
+
+### Avoid `any` Types
+
+**❌ BAD: Using `any` to bypass type checking**
+```typescript
+await vm.onSubmit({
+  data: { name: 'John Doe' }
+} as any)  // Bypasses type safety
+```
+
+**✅ GOOD: Use proper types from source**
+```typescript
+import type { FormSubmitEvent } from '@nuxt/ui'
+
+type ProfileSchema = {
+  name: string
+  bio?: string
+}
+
+const submitEvent = {
+  data: {
+    name: 'John Doe',
+    bio: 'Test bio'
+  }
+} as FormSubmitEvent<ProfileSchema>
+
+await vm.onSubmit(submitEvent)
+```
+
+### Import Types Instead of Redefining
+
+**❌ BAD: Redefining types locally**
+```typescript
+// In test file
+type UploadError = { message: string; code: string }
+const mockUploadError = ref<UploadError | null>(null)
+```
+
+**✅ GOOD: Import types from their source**
+```typescript
+import type { UploadError } from '~/types/upload'
+
+const mockUploadError = ref<UploadError | null>(null)
+```
+
+**Benefits**:
+- Ensures type consistency across codebase
+- Automatically updates when source type changes
+- Avoids type mismatches between test and implementation
+
+### Properly Type Reactive Mock Objects
+
+**❌ BAD: Implicit typing that's too restrictive**
+```typescript
+const createMockProfile = () => reactive({
+  name: '',
+  avatar: undefined,  // TypeScript infers as undefined, not string | undefined
+  bio: undefined
+})
+
+// Later in test - ERROR: Type 'string' is not assignable to type 'undefined'
+mockProfile.avatar = 'https://example.com/avatar.jpg'
+```
+
+**✅ GOOD: Explicit typing for flexibility**
+```typescript
+const createMockProfile = () => reactive<{
+  name: string
+  avatar: string | undefined
+  bio: string | undefined
+}>({
+  name: '',
+  avatar: undefined,
+  bio: undefined
+})
+
+// Now this works correctly
+mockProfile.avatar = 'https://example.com/avatar.jpg'
+```
+
+### Use Type Assertions for Partial Mocks
+
+When creating mock objects that don't fully implement an interface but are sufficient for testing:
+
+**✅ GOOD: Type assertion for partial mocks**
+```typescript
+import type { FormSubmitEvent } from '@nuxt/ui'
+
+// Create minimal mock that satisfies the interface
+const submitEvent = {
+  data: {
+    name: 'John Doe',
+    bio: 'Test bio'
+  }
+} as FormSubmitEvent<ProfileSchema>
+
+// This is acceptable because:
+// 1. We're only testing the data property
+// 2. FormSubmitEvent extends SubmitEvent with many properties we don't need
+// 3. The type assertion documents our intent
+```
+
+**When to use type assertions**:
+- Creating partial mocks of complex interfaces
+- Mocking DOM events that have many properties
+- When the full interface isn't needed for the test
+
+**When NOT to use type assertions**:
+- When you can use the actual type
+- When `any` would work (use proper types instead)
+- When the assertion hides real type errors
+
+### Type Component Instance Methods
+
+**✅ GOOD: Properly type component instance**
+```typescript
+import type { ComponentPublicInstance } from 'vue'
+import type { FormSubmitEvent } from '@nuxt/ui'
+
+type ProfileSchema = {
+  name: string
+  bio?: string
+}
+
+type SettingsPageInstance = ComponentPublicInstance & {
+  onSubmit: (event: FormSubmitEvent<ProfileSchema>) => Promise<void>
+  onFileChange: (e: Event) => void
+  onFileClick: () => void
+}
+
+const vm = wrapper.vm as SettingsPageInstance
+await vm.onSubmit(submitEvent)  // Fully typed
+```
+
+### Type Mock Functions
+
+**✅ GOOD: Type mock functions for better IDE support**
+```typescript
+const mockLoadProfile = vi.fn<() => Promise<void>>()
+const mockSaveProfile = vi.fn<(data: ProfileUpdateRequest) => Promise<void>>()
+
+// TypeScript knows the signature
+mockSaveProfile.mockResolvedValue(undefined)
+expect(mockSaveProfile).toHaveBeenCalledWith({
+  name: 'John Doe',
+  bio: 'Test bio'
+})
+```
+
 ## Best Practices Summary
 
 1. **Organize by test type**: Unit tests in `test/unit/`, Nuxt tests in `test/nuxt/`
@@ -804,6 +954,9 @@ vi.mock('#imports', () => ({
 13. **Use proper types**: Type mocks correctly for better IDE support
 14. **Test composable integration**: Verify components use composables correctly
 15. **Separate composable and component tests**: Test composable logic separately from component behavior
+16. **Avoid `any` types**: Use proper types from source or type assertions when needed
+17. **Import types from source**: Don't redefine types locally in tests
+18. **Type reactive mocks explicitly**: Use explicit types for reactive objects that need to be updated
 
 ## Related Documentation
 

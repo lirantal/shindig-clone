@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Import after mocks are set up
+import { useNotifications } from '~/composables/useNotifications'
+
 /**
  * useNotifications Composable Tests
  *
@@ -33,9 +36,6 @@ vi.mock('#app', () => ({
 
 // Also stub useToast globally for auto-imports (must be after vi.mock)
 vi.stubGlobal('useToast', mockUseToast)
-
-// Import after mocks are set up
-import { useNotifications } from '~/composables/useNotifications'
 
 describe('useNotifications Composable', () => {
   beforeEach(() => {
@@ -107,7 +107,7 @@ describe('useNotifications Composable', () => {
 
     it('should set loading to true during fetch', async () => {
       mockFetch.mockImplementation(() => {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           setTimeout(() => {
             resolve({
               email: true,
@@ -139,7 +139,7 @@ describe('useNotifications Composable', () => {
       // Verify error state is set (composable uses original error if it's an Error instance)
       expect(error.value).toBeTruthy()
       expect(error.value?.message).toBe('Network error')
-      
+
       // Note: Toast mocking is complex with auto-imports, but error handling is verified above
       // The toast.add() call is verified in component integration tests
     })
@@ -213,7 +213,7 @@ describe('useNotifications Composable', () => {
       // Verify state was updated from response
       expect(state.email).toBe(response.email)
       expect(state.desktop).toBe(response.desktop)
-      
+
       // Note: Toast mocking is complex with auto-imports, but save functionality is verified above
       // The toast.add() call is verified in component integration tests
     })
@@ -228,7 +228,7 @@ describe('useNotifications Composable', () => {
       // Verify error state is set (composable uses original error if it's an Error instance)
       expect(error.value).toBeTruthy()
       expect(error.value?.message).toBe('Network error')
-      
+
       // Note: Toast mocking is complex with auto-imports, but error handling is verified above
       // The toast.add() call is verified in component integration tests
     })

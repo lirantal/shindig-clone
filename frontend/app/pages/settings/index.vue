@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { onMounted } from 'vue'
 
 const config = useRuntimeConfig()
 const fileRef = ref<HTMLInputElement>()
 const selectedFile = ref<File | null>(null)
 const { uploadFile, uploading, uploadProgress, error: uploadError, clearError } = useAvatarUpload()
+const { profile, loadProfile, saveProfile } = useProfile()
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Too short'),
@@ -15,103 +17,20 @@ const profileSchema = z.object({
 
 type ProfileSchema = z.output<typeof profileSchema>
 
-const profile = reactive<Partial<ProfileSchema>>({
-  name: '',
-  avatar: undefined,
-  bio: undefined
-})
-const toast = useToast()
-
-// Type for backend profile response
-type ProfileResponse = {
-  id: string
-  name: string
-  email: string
-  image: string | null
-  emailVerified: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-// Helper function to construct avatar URL from image key
-async function getAvatarUrl(imageKey: string | null | undefined): Promise<string | undefined> {
-  if (!imageKey) {
-    return undefined
-  }
-
-  // If CDN URL is configured, construct the URL directly
-  if (config.public.r2CdnUrl) {
-    return `${config.public.r2CdnUrl}/gallery/${imageKey}`
-  }
-
-  // Otherwise, fetch signed URL from backend
-  try {
-    type ImageResponse = {
-      hasImage: boolean
-      downloadUrl?: string
-    }
-    const response = await $fetch<ImageResponse>(
-      `${config.public.apiBaseUrl}/api/user/profile/image`,
-      {
-        credentials: 'include'
-      }
-    )
-    return response.hasImage ? response.downloadUrl : undefined
-  } catch (err) {
-    console.error('Failed to get avatar URL:', err)
-    return undefined
-  }
-}
-
 // Load profile data on mount
-const { error: loadError } = await useFetch<ProfileResponse>(
-  `${config.public.apiBaseUrl}/api/user/profile`,
-  {
-    credentials: 'include',
-    lazy: true,
-    onResponse: async ({ response }) => {
-      if (response._data) {
-        const userData = response._data
-        // Map backend response to frontend form state
-        profile.name = userData.name || ''
-
-        // Construct avatar URL
-        profile.avatar = await getAvatarUrl(userData.image)
-
-        // Bio is not in backend schema, so leave undefined
-        profile.bio = undefined
-      }
-    }
-  }
-)
-
-// Show error toast if loading fails
-if (loadError.value) {
-  toast.add({
-    title: 'Error',
-    description: 'Failed to load profile data. Please refresh the page.',
-    icon: 'i-lucide-alert-circle',
-    color: 'error'
-  })
-}
+onMounted(() => {
+  loadProfile()
+})
 
 async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
   try {
     // If a new avatar file was selected, upload it first
     if (selectedFile.value) {
-      toast.add({
-        title: 'Uploading avatar...',
-        description: 'Please wait while we upload your avatar.',
-        icon: 'i-lucide-upload',
-        color: 'primary'
-      })
-
       await uploadFile(selectedFile.value)
 
-      // Update local profile with CDN URL for preview
+      // Update local profile with preview URL
       if (config.public.r2CdnUrl) {
-        // The backend manages the stable key, so we can construct a preview URL
-        // For now, just keep the local preview until we get the actual URL from backend
+        // Keep the local preview until we get the actual URL from backend after save
         profile.avatar = URL.createObjectURL(selectedFile.value)
       }
 
@@ -119,54 +38,15 @@ async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
       selectedFile.value = null
     }
 
-    // Submit profile data (name only - avatar is handled separately by backend)
-    const profileData = {
+    // Submit profile data (name and bio - avatar is handled separately by backend)
+    await saveProfile({
       name: event.data.name,
       bio: event.data.bio
-    }
-
-    // Make API call to update user profile
-    type UpdateProfileResponse = {
-      success: boolean
-      user: {
-        id: string
-        name: string
-        email: string
-        image: string | null
-        emailVerified: boolean
-        createdAt: string
-        updatedAt: string
-      }
-    }
-    const response = await $fetch<UpdateProfileResponse>(
-      `${config.public.apiBaseUrl}/api/user/profile`,
-      {
-        method: 'POST',
-        body: profileData,
-        credentials: 'include'
-      }
-    )
-
-    // Update local state with response
-    if (response.user) {
-      profile.name = response.user.name
-      // Update avatar URL if image exists
-      profile.avatar = await getAvatarUrl(response.user.image)
-    }
-
-    toast.add({
-      title: 'Success',
-      description: 'Your settings have been updated.',
-      icon: 'i-lucide-check',
-      color: 'success'
     })
   } catch (err: unknown) {
-    toast.add({
-      title: 'Error',
-      description: err instanceof Error ? err.message : 'Failed to update settings.',
-      icon: 'i-lucide-alert-circle',
-      color: 'error'
-    })
+    // Error handling is done in saveProfile composable
+    // But we can add additional handling here if needed
+    console.error('Failed to save profile:', err)
   }
 }
 
