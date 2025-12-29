@@ -1,17 +1,15 @@
 <script setup lang="ts">
-const config = useRuntimeConfig()
-const toast = useToast()
+const { state, loadNotifications, saveNotifications } = useNotifications()
 
-const state = reactive<{ [key: string]: boolean }>({
-  email: true,
-  desktop: false,
-  product_updates: true,
-  weekly_digest: false,
-  important_updates: true
+// Load notifications on component mount
+onMounted(() => {
+  loadNotifications()
 })
 
-const loading = ref(false)
-const saving = ref(false)
+// Handle switch toggle - save immediately
+async function onChange() {
+  await saveNotifications()
+}
 
 const sections = [{
   title: 'Notification channels',
@@ -42,104 +40,6 @@ const sections = [{
     description: 'Receive emails about important updates like security fixes, maintenance, etc.'
   }]
 }]
-
-// Type for backend notifications response
-type NotificationsResponse = {
-  email: boolean
-  desktop: boolean
-  product_updates: boolean
-  weekly_digest: boolean
-  important_updates: boolean
-}
-
-// Load notification settings on mount
-const { error: loadError } = await useFetch<NotificationsResponse>(
-  `${config.public.apiBaseUrl}/api/user/notifications`,
-  {
-    credentials: 'include',
-    lazy: true,
-    onResponse: ({ response }) => {
-      if (response._data) {
-        const data = response._data
-        // Update state with loaded data
-        state.email = data.email
-        state.desktop = data.desktop
-        state.product_updates = data.product_updates
-        state.weekly_digest = data.weekly_digest
-        state.important_updates = data.important_updates
-      }
-    }
-  }
-)
-
-// Show error toast if loading fails
-if (loadError.value) {
-  toast.add({
-    title: 'Error',
-    description: 'Failed to load notification settings. Please refresh the page.',
-    icon: 'i-lucide-alert-circle',
-    color: 'error'
-  })
-}
-
-async function onChange() {
-  if (saving.value) {
-    return // Prevent concurrent saves
-  }
-
-  saving.value = true
-
-  try {
-    type UpdateNotificationsResponse = {
-      success: boolean
-      email: boolean
-      desktop: boolean
-      product_updates: boolean
-      weekly_digest: boolean
-      important_updates: boolean
-    }
-
-    const response = await $fetch<UpdateNotificationsResponse>(
-      `${config.public.apiBaseUrl}/api/user/notifications`,
-      {
-        method: 'POST',
-        body: {
-          email: state.email,
-          desktop: state.desktop,
-          product_updates: state.product_updates,
-          weekly_digest: state.weekly_digest,
-          important_updates: state.important_updates
-        },
-        credentials: 'include'
-      }
-    )
-
-    // Update state with response (in case backend normalizes values)
-    if (response) {
-      state.email = response.email
-      state.desktop = response.desktop
-      state.product_updates = response.product_updates
-      state.weekly_digest = response.weekly_digest
-      state.important_updates = response.important_updates
-    }
-
-    toast.add({
-      title: 'Success',
-      description: 'Notification settings have been updated.',
-      icon: 'i-lucide-check',
-      color: 'success'
-    })
-  } catch (err: unknown) {
-    toast.add({
-      title: 'Error',
-      description: err instanceof Error ? err.message : 'Failed to update notification settings.',
-      icon: 'i-lucide-alert-circle',
-      color: 'error'
-    })
-  } finally {
-    saving.value = false
-  }
-}
 </script>
 
 <template>
@@ -162,6 +62,7 @@ async function onChange() {
       >
         <USwitch
           v-model="state[field.name]"
+          :data-testid="`${field.name}-switch`"
           @update:model-value="onChange"
         />
       </UFormField>

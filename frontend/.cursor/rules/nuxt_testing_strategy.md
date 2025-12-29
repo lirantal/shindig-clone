@@ -587,12 +587,23 @@ it('should have correct account updates section', () => {
 
 **✅ GOOD: Testing actual component behavior**
 ```typescript
-it('should call useFetch with correct API endpoint on mount', () => {
-  // Test that component actually calls the API
-  expect(mockUseFetch).toHaveBeenCalledWith(
-    'http://localhost:8787/api/user/notifications',
-    expect.objectContaining({ credentials: 'include' })
-  )
+it('should call loadNotifications on mount', async () => {
+  const wrapper = mount(NotificationsPage)
+  await flushPromises()
+  
+  // Test that component calls the composable method
+  expect(mockLoadNotifications).toHaveBeenCalledTimes(1)
+})
+
+it('should call saveNotifications when switch is toggled', async () => {
+  const wrapper = mount(NotificationsPage)
+  await flushPromises()
+  
+  const vm = wrapper.vm as NotificationsPageInstance
+  await vm.onChange()
+  
+  // Test that component calls the composable method
+  expect(mockSaveNotifications).toHaveBeenCalled()
 })
 ```
 
@@ -605,25 +616,29 @@ it('should call useFetch with correct API endpoint on mount', () => {
 
 ### What TO Test
 
-1. **Test API calls**: Verify components call APIs with correct parameters
-2. **Test state updates**: Verify component state changes based on API responses
-3. **Test user interactions**: Verify component responds to user actions
-4. **Test error handling**: Verify component handles errors correctly
-5. **Test component logic**: Verify the actual functions and methods in your component
+1. **Test composable integration**: Verify components call composable methods correctly
+2. **Test state updates**: Verify component state changes based on composable state
+3. **Test user interactions**: Verify component responds to user actions and calls composable methods
+4. **Test error handling**: Verify component handles errors from composables correctly
+5. **Test component lifecycle**: Verify component calls composable methods at appropriate times (onMounted, etc.)
+6. **Test rendering**: Verify component renders correctly with composable state
 
 ### Distinguishing Test Types
 
-**Logic/Behavior Tests** (Current approach for complex Nuxt components):
-- Test the patterns and logic the component uses
-- Verify API contracts and data flow
-- Test error handling patterns
-- Useful when component mounting is complex
+**Composable Tests** (Test composable logic in isolation):
+- Test composable state management
+- Test composable methods (load, save, etc.)
+- Test error handling within composable
+- Mock underlying APIs ($fetch, useToast, etc.)
+- Fast and focused on business logic
 
-**Component Mounting Tests** (Better approach when possible):
-- Actually mount the component
-- Interact with it (click, type, etc.)
-- Verify DOM changes and state updates
-- More realistic but requires more setup
+**Component Tests** (Test component behavior with composable):
+- Mount the component
+- Mock the composable (not underlying APIs)
+- Verify component calls composable methods
+- Test user interactions trigger composable methods
+- Verify component renders based on composable state
+- More realistic integration testing
 
 ## Component Testing with @nuxt/test-utils
 
@@ -723,51 +738,76 @@ it('should update state when API response is received', async () => {
 
 ### Mocking Nuxt Composables in Component Tests
 
-```typescript
-// Mock at module level
-const mockUseFetch = vi.fn()
-const mockFetch = vi.fn()
-const mockToastAdd = vi.fn()
+**Best Practice**: Mock composables directly rather than mocking underlying APIs. This tests the component's use of the composable interface, not implementation details.
 
-vi.mock('#app', () => ({
-  useRuntimeConfig: () => ({
-    public: { apiBaseUrl: 'http://localhost:8787' }
-  }),
-  useToast: () => ({ add: mockToastAdd })
+```typescript
+// ✅ GOOD: Mock the composable directly
+const mockLoadNotifications = vi.fn()
+const mockSaveNotifications = vi.fn()
+const mockState = reactive({ email: true, desktop: false, ... })
+const mockLoading = ref(false)
+const mockSaving = ref(false)
+const mockError = ref<Error | null>(null)
+
+const mockUseNotifications = vi.fn(() => ({
+  state: mockState,
+  loading: mockLoading,
+  saving: mockSaving,
+  error: mockError,
+  loadNotifications: mockLoadNotifications,
+  saveNotifications: mockSaveNotifications
 }))
 
+vi.mock('~/composables/useNotifications', () => ({
+  useNotifications: () => mockUseNotifications()
+}))
+
+// ❌ BAD: Mocking underlying APIs instead of the composable
+// This tests implementation details, not component behavior
 vi.mock('#imports', () => ({
   useFetch: (...args: unknown[]) => mockUseFetch(...args),
   $fetch: (...args: unknown[]) => mockFetch(...args)
 }))
 ```
 
+**Why mock composables directly?**
+- Tests component behavior, not implementation details
+- Easier to maintain when composable internals change
+- Better isolation - composable logic is tested separately
+- More realistic - component uses composable interface
+
 ### Component Test Best Practices
 
-1. **Mount only when necessary**: If you can test logic without mounting, do that first
-2. **Mock external dependencies**: Mock API calls, composables, and browser APIs
-3. **Test user-visible behavior**: Focus on what users see and interact with
-4. **Use data-testid attributes**: Add `data-testid` to elements you need to find in tests
-5. **Wait for async updates**: Use `await wrapper.vm.$nextTick()` after state changes
-6. **Clean up after tests**: Unmount components in `afterEach` if needed
+1. **Mock composables directly**: Mock the composable interface, not underlying APIs
+2. **Mount only when necessary**: If you can test logic without mounting, do that first
+3. **Mock external dependencies**: Mock composables, not their internal implementation
+4. **Test user-visible behavior**: Focus on what users see and interact with
+5. **Use data-testid attributes**: Add `data-testid` to elements you need to find in tests
+6. **Wait for async updates**: Use `await flushPromises()` or `await wrapper.vm.$nextTick()` after state changes
+7. **Clean up after tests**: Unmount components in `afterEach` if needed
+8. **Test composable integration**: Verify component calls composable methods correctly
 
 ## Best Practices Summary
 
 1. **Organize by test type**: Unit tests in `test/unit/`, Nuxt tests in `test/nuxt/`
 2. **Use proper environment**: Node for pure logic, Nuxt for runtime-dependent code
-3. **Create readable mocks**: Use named variables instead of cryptic type casts
-4. **Clear mocks properly**: Always reset in `beforeEach`
-5. **Use descriptive names**: Test names should read like documentation
-6. **Follow AAA pattern**: Arrange, Act, Assert
-7. **Test behavior, not implementation**: Focus on what users see
-8. **Test actual code, not JavaScript**: Don't test object creation or type checking
-9. **Mount components when needed**: Use component mounting for interaction and DOM tests
-10. **Handle errors**: Test both success and failure paths
-11. **Keep tests isolated**: Each test should be independent
-12. **Use proper types**: Type mocks correctly for better IDE support
+3. **Mock composables directly**: Mock the composable interface, not underlying APIs
+4. **Create readable mocks**: Use named variables instead of cryptic type casts
+5. **Clear mocks properly**: Always reset in `beforeEach`
+6. **Use descriptive names**: Test names should read like documentation
+7. **Follow AAA pattern**: Arrange, Act, Assert
+8. **Test behavior, not implementation**: Focus on what users see and composable interactions
+9. **Test actual code, not JavaScript**: Don't test object creation or type checking
+10. **Mount components when needed**: Use component mounting for interaction and DOM tests
+11. **Handle errors**: Test both success and failure paths
+12. **Keep tests isolated**: Each test should be independent
+13. **Use proper types**: Type mocks correctly for better IDE support
+14. **Test composable integration**: Verify components use composables correctly
+15. **Separate composable and component tests**: Test composable logic separately from component behavior
 
-## References
+## Related Documentation
 
+- [Nuxt Component Best Practices](./nuxt_component_best_practices.md) - Guidelines for building testable Nuxt components
 - [Official Nuxt Testing Documentation](https://nuxt.com/docs/getting-started/testing)
 - [@nuxt/test-utils Module](https://nuxt.com/modules/test-utils)
 - [Vue Test Utils Documentation](https://test-utils.vuejs.org/)

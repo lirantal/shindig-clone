@@ -1,0 +1,710 @@
+# Nuxt 4 Component Development Best Practices
+
+This document outlines best practices for building Nuxt 4 components and pages that are maintainable, testable, and follow Nuxt conventions. These practices are based on official Nuxt guidelines and practical experience from implementing features in this codebase.
+
+## Table of Contents
+
+1. [Component Architecture](#component-architecture)
+2. [Composables Pattern](#composables-pattern)
+3. [Data Fetching](#data-fetching)
+4. [State Management](#state-management)
+5. [Error Handling](#error-handling)
+6. [Component Lifecycle](#component-lifecycle)
+7. [Testing Considerations](#testing-considerations)
+8. [Common Patterns](#common-patterns)
+9. [Anti-Patterns to Avoid](#anti-patterns-to-avoid)
+
+## Component Architecture
+
+### Separation of Concerns
+
+**✅ GOOD: Separate logic from presentation**
+
+```vue
+<script setup lang="ts">
+// Component focuses on presentation
+const { state, loadNotifications, saveNotifications } = useNotifications()
+
+onMounted(() => {
+  loadNotifications()
+})
+
+async function onChange() {
+  await saveNotifications()
+}
+</script>
+
+<template>
+  <!-- Presentation only -->
+  <USwitch v-model="state.email" @update:model-value="onChange" />
+</template>
+```
+
+**❌ BAD: Mixing logic and presentation**
+
+```vue
+<script setup lang="ts">
+// Too much logic in component
+const state = reactive({ email: true, ... })
+const saving = ref(false)
+
+const { error: loadError } = await useFetch('/api/notifications', {
+  onResponse: ({ response }) => {
+    if (response._data) {
+      state.email = response._data.email
+      // ... more logic
+    }
+  }
+})
+
+async function onChange() {
+  saving.value = true
+  try {
+    const response = await $fetch('/api/notifications', {
+      method: 'POST',
+      body: state
+    })
+    // ... more logic
+  } finally {
+    saving.value = false
+  }
+}
+</script>
+```
+
+### Component Responsibilities
+
+A component should:
+- **Present UI**: Render data and handle user interactions
+- **Delegate logic**: Use composables for business logic
+- **Handle lifecycle**: Call composable methods at appropriate times
+- **Display state**: Show loading, error, and success states from composables
+
+A component should NOT:
+- Make direct API calls (use composables)
+- Manage complex state (use composables)
+- Contain business logic (use composables)
+- Handle data transformation (use composables)
+
+## Composables Pattern
+
+### When to Create a Composable
+
+Create a composable when you have:
+- **Reusable logic**: Logic used in multiple components
+- **Complex state management**: Multiple related reactive values
+- **API interactions**: Data fetching and mutations
+- **Business logic**: Domain-specific operations
+- **Testability needs**: Logic that should be tested in isolation
+
+### Composable Structure
+
+**✅ GOOD: Well-structured composable**
+
+```typescript
+// app/composables/useNotifications.ts
+export type NotificationsState = {
+  email: boolean
+  desktop: boolean
+  // ... other fields
+}
+
+export const useNotifications = () => {
+  // Dependencies
+  const config = useRuntimeConfig()
+  const toast = useToast()
+
+  // State
+  const state = reactive<NotificationsState>({
+    email: true,
+    desktop: false,
+    // ... defaults
+  })
+
+  const loading = ref(false)
+  const saving = ref(false)
+  const error = ref<Error | null>(null)
+
+  // Methods
+  const loadNotifications = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const data = await $fetch<NotificationsState>(
+        `${config.public.apiBaseUrl}/api/user/notifications`,
+        { credentials: 'include' }
+      )
+
+      // Update state
+      Object.assign(state, data)
+    } catch (err) {
+      error.value = err instanceof Error ? err : new Error('Failed to load')
+      toast.add({ title: 'Error', color: 'error' })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const saveNotifications = async () => {
+    if (saving.value) return // Prevent concurrent saves
+
+    saving.value = true
+    error.value = null
+
+    try {
+      const response = await $fetch(`${config.public.apiBaseUrl}/api/user/notifications`, {
+        method: 'POST',
+        body: { ...state },
+        credentials: 'include'
+      })
+
+      Object.assign(state, response)
+      toast.add({ title: 'Success', color: 'success' })
+    } catch (err) {
+      error.value = err instanceof Error ? err : new Error('Failed to save')
+      toast.add({ title: 'Error', color: 'error' })
+      throw err
+    } finally {
+      saving.value = false
+    }
+  }
+
+  // Return public API
+  return {
+    state,
+    loading: readonly(loading),
+    saving: readonly(saving),
+    error: readonly(error),
+    loadNotifications,
+    saveNotifications
+  }
+}
+```
+
+### Composable Best Practices
+
+1. **Export types**: Export TypeScript types for state and responses
+2. **Use readonly for refs**: Prevent external mutation of internal state
+3. **Return reactive state**: Return reactive objects for two-way binding
+4. **Handle errors**: Catch errors and set error state
+5. **Provide loading states**: Track loading/saving states
+6. **Use $fetch over useFetch**: Easier to mock and test in composables
+7. **Prevent concurrent operations**: Check loading state before async operations
+
+## Data Fetching
+
+### Avoid Top-Level Await
+
+**❌ BAD: Top-level await makes testing difficult**
+
+```vue
+<script setup lang="ts">
+// Top-level await is hard to test
+const { data, error } = await useFetch('/api/notifications', {
+  onResponse: ({ response }) => {
+    if (response._data) {
+      state.email = response._data.email
+      // ...
+    }
+  }
+})
+</script>
+```
+
+**✅ GOOD: Use onMounted with composable**
+
+```vue
+<script setup lang="ts">
+const { state, loadNotifications } = useNotifications()
+
+// Load data on mount
+onMounted(() => {
+  loadNotifications()
+})
+</script>
+```
+
+### Why Avoid Top-Level Await?
+
+1. **Testing complexity**: Top-level await makes component mounting in tests difficult
+2. **Lifecycle control**: Harder to control when data loading happens
+3. **Error handling**: More difficult to handle errors gracefully
+4. **Loading states**: Harder to show loading indicators
+5. **Composability**: Less flexible for reuse and composition
+
+### Data Fetching Patterns
+
+**Pattern 1: onMounted Hook (Recommended)**
+
+```vue
+<script setup lang="ts">
+const { state, loadNotifications, loading } = useNotifications()
+
+onMounted(() => {
+  loadNotifications()
+})
+</script>
+
+<template>
+  <div v-if="loading">Loading...</div>
+  <div v-else>
+    <!-- Content -->
+  </div>
+</template>
+```
+
+**Pattern 2: Watch for Route Changes**
+
+```vue
+<script setup lang="ts">
+const route = useRoute()
+const { loadData } = useDataComposable()
+
+onMounted(() => {
+  loadData()
+})
+
+watch(() => route.params.id, () => {
+  loadData() // Reload when route changes
+})
+</script>
+```
+
+**Pattern 3: Manual Trigger**
+
+```vue
+<script setup lang="ts">
+const { loadData, refresh } = useDataComposable()
+
+// Load on mount
+onMounted(() => {
+  loadData()
+})
+
+// Expose refresh for manual reload
+defineExpose({ refresh })
+</script>
+```
+
+## State Management
+
+### Component State vs Composable State
+
+**Component State**: UI-specific, temporary state
+- Form input values (before submission)
+- UI toggles (modals, dropdowns)
+- Temporary calculations
+
+**Composable State**: Business logic, persistent state
+- Data from API
+- User preferences
+- Application state
+
+**✅ GOOD: Clear separation**
+
+```vue
+<script setup lang="ts">
+// Business logic state (from composable)
+const { state, saveNotifications } = useNotifications()
+
+// UI state (component-specific)
+const isModalOpen = ref(false)
+const searchQuery = ref('')
+</script>
+```
+
+### State Updates
+
+**✅ GOOD: Update state through composable methods**
+
+```vue
+<script setup lang="ts">
+const { state, saveNotifications } = useNotifications()
+
+async function onChange() {
+  // State is updated by composable after API call
+  await saveNotifications()
+}
+</script>
+```
+
+**❌ BAD: Direct state mutation without API sync**
+
+```vue
+<script setup lang="ts">
+const { state } = useNotifications()
+
+function onChange() {
+  // Direct mutation without API call
+  state.email = !state.email
+}
+</script>
+```
+
+## Error Handling
+
+### Error Handling in Composables
+
+**✅ GOOD: Comprehensive error handling**
+
+```typescript
+const loadData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const data = await $fetch('/api/data')
+    // Update state
+  } catch (err) {
+    // Set error state
+    error.value = err instanceof Error ? err : new Error('Failed to load')
+    
+    // Show user feedback
+    toast.add({
+      title: 'Error',
+      description: error.value.message,
+      color: 'error'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+```
+
+### Error Display in Components
+
+**✅ GOOD: Display errors from composable**
+
+```vue
+<script setup lang="ts">
+const { error, loading } = useNotifications()
+</script>
+
+<template>
+  <div v-if="error">
+    <UAlert :title="error.message" color="error" />
+  </div>
+  
+  <div v-else-if="loading">
+    Loading...
+  </div>
+  
+  <div v-else>
+    <!-- Content -->
+  </div>
+</template>
+```
+
+## Component Lifecycle
+
+### onMounted for Data Loading
+
+**✅ GOOD: Load data in onMounted**
+
+```vue
+<script setup lang="ts">
+const { loadNotifications } = useNotifications()
+
+onMounted(() => {
+  loadNotifications()
+})
+</script>
+```
+
+### Lifecycle Hooks Best Practices
+
+1. **onMounted**: Load initial data, setup subscriptions
+2. **onUnmounted**: Cleanup subscriptions, cancel requests
+3. **watch**: React to route changes, prop changes
+4. **watchEffect**: Reactive side effects
+
+**Example: Cleanup on unmount**
+
+```vue
+<script setup lang="ts">
+const { loadData, cleanup } = useDataComposable()
+
+onMounted(() => {
+  loadData()
+})
+
+onUnmounted(() => {
+  cleanup() // Cancel pending requests, clear timers
+})
+</script>
+```
+
+## Testing Considerations
+
+### Design for Testability
+
+**✅ GOOD: Testable component structure**
+
+```vue
+<script setup lang="ts">
+// Composable is easy to mock
+const { state, loadNotifications, saveNotifications } = useNotifications()
+
+// Methods are accessible for testing
+onMounted(() => {
+  loadNotifications()
+})
+
+async function onChange() {
+  await saveNotifications()
+}
+</script>
+```
+
+**Component test can easily mock composable:**
+
+```typescript
+const mockLoadNotifications = vi.fn()
+const mockSaveNotifications = vi.fn()
+
+vi.mock('~/composables/useNotifications', () => ({
+  useNotifications: () => ({
+    state: reactive({ email: true }),
+    loadNotifications: mockLoadNotifications,
+    saveNotifications: mockSaveNotifications
+  })
+}))
+
+// Test that component calls composable methods
+expect(mockLoadNotifications).toHaveBeenCalled()
+```
+
+### Testability Anti-Patterns
+
+**❌ BAD: Hard to test**
+
+```vue
+<script setup lang="ts">
+// Top-level await - hard to test
+const { data } = await useFetch('/api/data')
+
+// Inline logic - hard to mock
+const response = await $fetch('/api/data', {
+  onResponse: ({ response }) => {
+    // Complex logic
+  }
+})
+</script>
+```
+
+## Common Patterns
+
+### Pattern 1: CRUD Operations
+
+```typescript
+// app/composables/useResource.ts
+export const useResource = <T>(resourceName: string) => {
+  const state = ref<T | null>(null)
+  const loading = ref(false)
+  const error = ref<Error | null>(null)
+
+  const load = async (id: string) => {
+    loading.value = true
+    try {
+      state.value = await $fetch(`/api/${resourceName}/${id}`)
+    } catch (err) {
+      error.value = err instanceof Error ? err : new Error('Failed to load')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const save = async (data: T) => {
+    loading.value = true
+    try {
+      state.value = await $fetch(`/api/${resourceName}`, {
+        method: 'POST',
+        body: data
+      })
+    } catch (err) {
+      error.value = err instanceof Error ? err : new Error('Failed to save')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { state, loading, error, load, save }
+}
+```
+
+### Pattern 2: Form Handling
+
+```vue
+<script setup lang="ts">
+const { state, save, saving } = useFormComposable()
+
+async function onSubmit() {
+  await save()
+}
+</script>
+
+<template>
+  <UForm @submit="onSubmit">
+    <UFormField>
+      <UInput v-model="state.name" />
+    </UFormField>
+    <UButton type="submit" :loading="saving">
+      Save
+    </UButton>
+  </UForm>
+</template>
+```
+
+### Pattern 3: List with Pagination
+
+```typescript
+export const usePaginatedList = <T>(endpoint: string) => {
+  const items = ref<T[]>([])
+  const page = ref(1)
+  const loading = ref(false)
+
+  const loadPage = async (pageNum: number) => {
+    loading.value = true
+    try {
+      items.value = await $fetch(`${endpoint}?page=${pageNum}`)
+      page.value = pageNum
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { items, page, loading, loadPage }
+}
+```
+
+## Anti-Patterns to Avoid
+
+### ❌ Top-Level Await in Components
+
+**Why avoid**: Makes testing difficult, less control over lifecycle
+
+```vue
+<!-- ❌ BAD -->
+<script setup lang="ts">
+const { data } = await useFetch('/api/data')
+</script>
+```
+
+```vue
+<!-- ✅ GOOD -->
+<script setup lang="ts">
+const { loadData } = useDataComposable()
+onMounted(() => loadData())
+</script>
+```
+
+### ❌ Direct API Calls in Components
+
+**Why avoid**: Hard to test, logic not reusable
+
+```vue
+<!-- ❌ BAD -->
+<script setup lang="ts">
+const state = reactive({})
+const response = await $fetch('/api/data')
+state.value = response.value
+</script>
+```
+
+```vue
+<!-- ✅ GOOD -->
+<script setup lang="ts">
+const { state, loadData } = useDataComposable()
+onMounted(() => loadData())
+</script>
+```
+
+### ❌ Complex Logic in Components
+
+**Why avoid**: Hard to test, not reusable
+
+```vue
+<!-- ❌ BAD -->
+<script setup lang="ts">
+const state = reactive({})
+const saving = ref(false)
+
+async function save() {
+  saving.value = true
+  try {
+    const response = await $fetch('/api/save', {
+      method: 'POST',
+      body: state
+    })
+    // Complex transformation logic
+    state.value = transformResponse(response)
+    // Error handling
+    // Toast notifications
+  } finally {
+    saving.value = false
+  }
+}
+</script>
+```
+
+```vue
+<!-- ✅ GOOD -->
+<script setup lang="ts">
+const { state, saveNotifications } = useNotifications()
+
+async function onChange() {
+  await saveNotifications()
+}
+</script>
+```
+
+### ❌ Mixing Presentation and Logic
+
+**Why avoid**: Hard to maintain, test, and reuse
+
+```vue
+<!-- ❌ BAD -->
+<script setup lang="ts">
+// Business logic mixed with presentation
+const sections = [/* ... */]
+const state = reactive({})
+const { data } = await useFetch('/api/data')
+// ... more logic
+</script>
+```
+
+```vue
+<!-- ✅ GOOD -->
+<script setup lang="ts">
+// Presentation only
+const { state, loadNotifications } = useNotifications()
+const sections = [/* ... */] // UI structure
+
+onMounted(() => {
+  loadNotifications()
+})
+</script>
+```
+
+## Best Practices Summary
+
+1. **Extract logic to composables**: Keep components focused on presentation
+2. **Avoid top-level await**: Use `onMounted` with composable methods
+3. **Use $fetch in composables**: Easier to mock and test than `useFetch`
+4. **Return readonly refs**: Prevent external mutation of internal state
+5. **Handle errors in composables**: Centralize error handling logic
+6. **Provide loading states**: Track loading/saving for UI feedback
+7. **Design for testability**: Make components easy to test by mocking composables
+8. **Separate concerns**: Business logic in composables, presentation in components
+9. **Use TypeScript types**: Export types for better type safety
+10. **Prevent concurrent operations**: Check loading state before async operations
+
+## References
+
+- [Nuxt Composables Documentation](https://nuxt.com/docs/guide/directory-structure/composables)
+- [Nuxt Component Best Practices](https://nuxt.com/docs/guide/directory-structure/components)
+- [Vue 3 Composition API](https://vuejs.org/guide/extras/composition-api-faq.html)
+- [Testing Strategy](./nuxt_testing_strategy.md)
+
