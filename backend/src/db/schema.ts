@@ -59,3 +59,21 @@ export const verification = pgTable("verification", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+export const userNotifications = pgTable("user_notifications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  email: boolean("email").default(true).notNull(),
+  desktop: boolean("desktop").default(false).notNull(),
+  productUpdates: boolean("product_updates").default(true).notNull(),
+  weeklyDigest: boolean("weekly_digest").default(false).notNull(),
+  importantUpdates: boolean("important_updates").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});

@@ -28,3 +28,11 @@ This document tracks the implementation status of features across the frontend a
 - [ ] Update bio/description
 - [ ] Profile privacy settings
 
+## User Settings
+
+- [x] Notification preferences
+  - Frontend: [frontend/app/pages/settings/notifications.vue](frontend/app/pages/settings/notifications.vue)
+  - Backend: [backend/src/routes/notifications.ts](backend/src/routes/notifications.ts) (mounted at `/api/user/notifications`)
+  - Database: [backend/src/db/schema.ts](backend/src/db/schema.ts) (user_notifications table)
+  - Migration: [backend/drizzle/0001_spicy_silver_centurion.sql](backend/drizzle/0001_spicy_silver_centurion.sql)
+

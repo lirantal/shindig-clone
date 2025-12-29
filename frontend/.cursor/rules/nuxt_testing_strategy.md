@@ -573,6 +573,184 @@ expect(mockFetch).toHaveBeenCalledWith(
    pnpm test:coverage
    ```
 
+## Testing Component Behavior vs Testing JavaScript
+
+### Critical Principle: Test Actual Behavior, Not JavaScript Features
+
+**❌ BAD: Testing JavaScript, not component behavior**
+```typescript
+it('should have correct account updates section', () => {
+  const sections = [{ title: 'Account updates', fields: [...] }]
+  expect(sections[0].title).toBe('Account updates')  // Just testing object creation
+})
+```
+
+**✅ GOOD: Testing actual component behavior**
+```typescript
+it('should call useFetch with correct API endpoint on mount', () => {
+  // Test that component actually calls the API
+  expect(mockUseFetch).toHaveBeenCalledWith(
+    'http://localhost:8787/api/user/notifications',
+    expect.objectContaining({ credentials: 'include' })
+  )
+})
+```
+
+### What NOT to Test
+
+1. **Don't test JavaScript object creation**: Creating objects and asserting on them doesn't test your code
+2. **Don't test type checking**: `expect(typeof value).toBe('boolean')` doesn't test component logic
+3. **Don't test mock behavior in isolation**: Testing that mocks work doesn't test your component
+4. **Don't test data structures you create**: If you create the data, you're not testing real behavior
+
+### What TO Test
+
+1. **Test API calls**: Verify components call APIs with correct parameters
+2. **Test state updates**: Verify component state changes based on API responses
+3. **Test user interactions**: Verify component responds to user actions
+4. **Test error handling**: Verify component handles errors correctly
+5. **Test component logic**: Verify the actual functions and methods in your component
+
+### Distinguishing Test Types
+
+**Logic/Behavior Tests** (Current approach for complex Nuxt components):
+- Test the patterns and logic the component uses
+- Verify API contracts and data flow
+- Test error handling patterns
+- Useful when component mounting is complex
+
+**Component Mounting Tests** (Better approach when possible):
+- Actually mount the component
+- Interact with it (click, type, etc.)
+- Verify DOM changes and state updates
+- More realistic but requires more setup
+
+## Component Testing with @nuxt/test-utils
+
+### When to Mount Components
+
+Mount components when you need to test:
+- User interactions (clicks, form submissions)
+- DOM rendering and updates
+- Component state changes visible in UI
+- Integration between component parts
+
+### Basic Component Mounting Pattern
+
+```typescript
+import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import NotificationsPage from '~/pages/settings/notifications.vue'
+
+describe('Notifications Page Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render notification sections', () => {
+    const wrapper = mount(NotificationsPage, {
+      global: {
+        mocks: {
+          $fetch: vi.fn(),
+          useRuntimeConfig: () => ({ public: { apiBaseUrl: 'http://localhost:8787' } }),
+          useToast: () => ({ add: vi.fn() })
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('Notification channels')
+    expect(wrapper.text()).toContain('Account updates')
+  })
+})
+```
+
+### Testing User Interactions
+
+```typescript
+it('should call onChange when switch is toggled', async () => {
+  const mockFetch = vi.fn()
+  mockFetch.mockResolvedValue({ success: true, email: true, desktop: true })
+
+  const wrapper = mount(NotificationsPage, {
+    global: {
+      mocks: {
+        $fetch: mockFetch,
+        useRuntimeConfig: () => ({ public: { apiBaseUrl: 'http://localhost:8787' } }),
+        useToast: () => ({ add: vi.fn() })
+      }
+    }
+  })
+
+  // Find and click a switch
+  const emailSwitch = wrapper.find('[data-testid="email-switch"]')
+  await emailSwitch.trigger('click')
+
+  // Verify API was called
+  expect(mockFetch).toHaveBeenCalled()
+})
+```
+
+### Testing State Updates
+
+```typescript
+it('should update state when API response is received', async () => {
+  const mockFetch = vi.fn()
+  const response = { email: false, desktop: true, ... }
+  mockFetch.mockResolvedValue(response)
+
+  const wrapper = mount(NotificationsPage, {
+    global: {
+      mocks: {
+        $fetch: mockFetch,
+        useFetch: vi.fn(() => ({
+          error: { value: null },
+          data: { value: response },
+          pending: { value: false }
+        })),
+        useRuntimeConfig: () => ({ public: { apiBaseUrl: 'http://localhost:8787' } }),
+        useToast: () => ({ add: vi.fn() })
+      }
+    }
+  })
+
+  await wrapper.vm.$nextTick()
+
+  // Verify component state matches API response
+  expect(wrapper.vm.state.email).toBe(false)
+  expect(wrapper.vm.state.desktop).toBe(true)
+})
+```
+
+### Mocking Nuxt Composables in Component Tests
+
+```typescript
+// Mock at module level
+const mockUseFetch = vi.fn()
+const mockFetch = vi.fn()
+const mockToastAdd = vi.fn()
+
+vi.mock('#app', () => ({
+  useRuntimeConfig: () => ({
+    public: { apiBaseUrl: 'http://localhost:8787' }
+  }),
+  useToast: () => ({ add: mockToastAdd })
+}))
+
+vi.mock('#imports', () => ({
+  useFetch: (...args: unknown[]) => mockUseFetch(...args),
+  $fetch: (...args: unknown[]) => mockFetch(...args)
+}))
+```
+
+### Component Test Best Practices
+
+1. **Mount only when necessary**: If you can test logic without mounting, do that first
+2. **Mock external dependencies**: Mock API calls, composables, and browser APIs
+3. **Test user-visible behavior**: Focus on what users see and interact with
+4. **Use data-testid attributes**: Add `data-testid` to elements you need to find in tests
+5. **Wait for async updates**: Use `await wrapper.vm.$nextTick()` after state changes
+6. **Clean up after tests**: Unmount components in `afterEach` if needed
+
 ## Best Practices Summary
 
 1. **Organize by test type**: Unit tests in `test/unit/`, Nuxt tests in `test/nuxt/`
@@ -582,13 +760,16 @@ expect(mockFetch).toHaveBeenCalledWith(
 5. **Use descriptive names**: Test names should read like documentation
 6. **Follow AAA pattern**: Arrange, Act, Assert
 7. **Test behavior, not implementation**: Focus on what users see
-8. **Handle errors**: Test both success and failure paths
-9. **Keep tests isolated**: Each test should be independent
-10. **Use proper types**: Type mocks correctly for better IDE support
+8. **Test actual code, not JavaScript**: Don't test object creation or type checking
+9. **Mount components when needed**: Use component mounting for interaction and DOM tests
+10. **Handle errors**: Test both success and failure paths
+11. **Keep tests isolated**: Each test should be independent
+12. **Use proper types**: Type mocks correctly for better IDE support
 
 ## References
 
 - [Official Nuxt Testing Documentation](https://nuxt.com/docs/getting-started/testing)
 - [@nuxt/test-utils Module](https://nuxt.com/modules/test-utils)
+- [Vue Test Utils Documentation](https://test-utils.vuejs.org/)
 - [Vitest Documentation](https://vitest.dev/)
 

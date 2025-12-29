@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { auth } from './lib/better-auth'
 import uploads from './routes/uploads'
 import profile from './routes/profile'
+import notifications from './routes/notifications'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -24,6 +25,9 @@ app.route('/api/uploads', uploads)
 
 // Mount profile routes
 app.route('/api/user', profile)
+
+// Mount notifications routes
+app.route('/api/user', notifications)
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
