@@ -1,3 +1,7 @@
+---
+description: Instructions for creating and refactoring Nuxt components and pages
+alwaysApply: false
+---
 # Nuxt 4 Component Development Best Practices
 
 This document outlines best practices for building Nuxt 4 components and pages that are maintainable, testable, and follow Nuxt conventions. These practices are based on official Nuxt guidelines and practical experience from implementing features in this codebase.

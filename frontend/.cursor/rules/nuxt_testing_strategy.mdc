@@ -1,3 +1,7 @@
+---
+description: Instructions when creating tests, refactoring tests, writing component tests, page tests, and general testing strategy and testing best practices
+alwaysApply: false
+---
 # Nuxt Testing Strategy
 
 This document outlines the testing strategy, best practices, and conventions for writing tests in this Nuxt application. It is based on official Nuxt testing guidelines and practical experience from implementing tests in this codebase.
