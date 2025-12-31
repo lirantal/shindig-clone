@@ -174,18 +174,16 @@ profile.get('/profile/image', async (c) => {
     const bucketUrl = `https://${c.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/gallery/${userData.image}`
 
     // Create a signed request for GET operation with query string signing
+    // Note: expires must be passed during signing, not added afterward
     const signedRequest = await aws.sign(bucketUrl, {
       method: 'GET',
       aws: { 
-        signQuery: true
-      } 
+        signQuery: true,
+        expires: 3600 // 1 hour expiration
+      } as { signQuery: boolean; expires: number }
     })
 
-    // Extract the pre-signed URL and add expiration parameter
-    const presignedUrl = new URL(signedRequest.url)
-    presignedUrl.searchParams.set('X-Amz-Expires', '3600') // 1 hour expiration
-    
-    const downloadUrl = presignedUrl.toString()
+    const downloadUrl = signedRequest.url
 
     // Return download URL and metadata
     return c.json({
