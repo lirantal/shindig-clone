@@ -11,7 +11,7 @@
         "ghcr.io/devcontainers/features/github-cli@sha256:d22f50b70ed75339b4eed1ba9ecde3a1791f90e88d37936517e3bace0bbad671": {}
     },
     "name": "Project monorepo devcontainer",
-    "image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-bookworm",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
     "forwardPorts": [
         8787,
         3005,
